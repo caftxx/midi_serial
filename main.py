@@ -1,7 +1,9 @@
+import os
 import sys
 import time
 import serial
 import struct
+from tqdm import tqdm
 
 class MidiSerial:
     def __init__(self, midi_file, port='COM4', baudrate=115200, timeout=0.5):
@@ -32,7 +34,7 @@ class MidiSerial:
         begin = time.time()
         ret = b''
         while len(ret) != size:
-            if time.time() - begin > 5:
+            if time.time() - begin > timeout:
                 raise TimeoutError(f"rx timeout, costtime:{time.time() - begin}")
             byte = self.serial.read_until(expected=[], size=1)
             if not byte:
@@ -41,16 +43,17 @@ class MidiSerial:
         return ret;
 
     def send(self):
-        while 1:
+        file_size = os.path.getsize(self.midi_file)
+        ticks = (file_size + 31) // 32
+        for _ in tqdm(range(ticks)):
             payload = self.midi_file_reader.read(32)
             if not payload:
                 break
 
-            print(f"send seqid:{self.seqid+1}, size:{len(payload)}")
             self.tx(payload)
 
             # seqid
-            seqid = int.from_bytes(self.rx(1))
+            seqid = int.from_bytes(self.rx(1, 666))
             if seqid != self.seqid:
                 raise ValueError(f"invalid rx seqid, expected:{self.seqid}, actual:{seqid}")
 
