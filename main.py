@@ -6,9 +6,10 @@ import struct
 from tqdm import tqdm
 
 class MidiSerial:
-    def __init__(self, midi_file, port='COM4', baudrate=115200, timeout=0.5):
+    def __init__(self, midi_file, channel_id = 0, port='COM4', baudrate=115200, timeout=0.5):
         self.serial = serial.Serial(port, baudrate, timeout=timeout)
         self.midi_file = midi_file
+        self.channel_id = channel_id
         self.midi_file_reader = open(midi_file, mode='rb')
         self.magic = 0xbeef
         self.seqid = 0
@@ -23,12 +24,13 @@ class MidiSerial:
             raise ValueError(f"payload size:{size} exceed limit 256")
         self.seqid = (self.seqid + 1) & 0xff
 
-        #    2   |   1   |      1       |   ...
-        #  magic | seqid | payload_size | payload
+        #    2   |   1   |   1        |      1       |   ...
+        #  magic | seqid | channel_id | payload_size | payload
         magic = struct.pack('H', self.magic)
         seqid = struct.pack('B', self.seqid)
+        channel_id = struct.pack('B', self.channel_id)
         payload_size = struct.pack('B', size)
-        self.serial.write(magic + seqid + payload_size + payload)
+        self.serial.write(magic + seqid + channel_id + payload_size + payload)
 
     def rx(self, size, timeout = 5):
         begin = time.time()
@@ -40,7 +42,7 @@ class MidiSerial:
             if not byte:
                 continue
             ret += byte
-        return ret;
+        return ret
 
     def send(self):
         file_size = os.path.getsize(self.midi_file)
@@ -59,10 +61,10 @@ class MidiSerial:
 
 def main():
     if len(sys.argv) < 2:
-        print("need midi file to send")
+        print("Usage: <midi filepath> [play channel id, default 0]")
         sys.exit(1)
 
-    midi = MidiSerial(sys.argv[1])
+    midi = MidiSerial(sys.argv[1], 0 if len(sys.argv) == 2 else int(sys.argv[2]))
     midi.send()
 
 if __name__ == '__main__':
