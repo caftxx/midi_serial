@@ -6,7 +6,7 @@ import struct
 from tqdm import tqdm
 
 class MidiSerial:
-    def __init__(self, midi_file, channel_id = 0, port='COM4', baudrate=115200, timeout=0.5):
+    def __init__(self, midi_file, port='COM4', channel_id = 0, baudrate=115200, timeout=0.5):
         self.serial = serial.Serial(port, baudrate, timeout=timeout)
         self.midi_file = midi_file
         self.channel_id = channel_id
@@ -61,10 +61,12 @@ class MidiSerial:
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: <midi filepath> [play channel id, default 0]")
+        print("Usage: <midi filepath> [COMID] [play channel id, default 0]")
         sys.exit(1)
 
-    midi = MidiSerial(sys.argv[1], 0 if len(sys.argv) == 2 else int(sys.argv[2]))
+    com = sys.argv[2] if len(sys.argv) >= 3 else 'COM4'
+    channel = int(sys.argv[3]) if len(sys.argv) >= 4 else 0
+    midi = MidiSerial(sys.argv[1], com, channel)
     midi.send()
 
 if __name__ == '__main__':
